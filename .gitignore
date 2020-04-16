@@ -1,0 +1,4 @@
+robocode/*
+!robocode/robots
+robocode/robots/*
+!robocode/robots/iwium
