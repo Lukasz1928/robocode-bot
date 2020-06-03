@@ -20,16 +20,16 @@ import static robocode.util.Utils.normalRelativeAngle;
 
 public class ReinforcementLearningRobot extends AdvancedRobot {
 	
-	private double gamma = 0.95;
-	private double alpha = 0.80;
-	private double epsilon = 0.10;
+	private static double gamma = 0.95;
+	private static double alpha = 0.80;
+	private static double epsilon = 0.10;
 	
-	private QLearner agent; 
+	private static boolean learning = true;
+	private static int statesCount = 3 * 3 * 3 * 8 * 2 * 9;
+	private static int stateComponents = 6;
+	private static int actionsCount = 6;
 	
-	private boolean learning = true;
-	private int statesCount = 3 * 3 * 3 * 8 * 2 * 9;
-	private int stateComponents = 6;
-	private int actionsCount = 6;
+	private static final QLearner agent = new QLearner(statesCount, actionsCount, alpha, gamma, 0.5);
 	
 	private int previousState;
 	private int currentState;
@@ -350,8 +350,8 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		arenaHeight = getBattleFieldHeight();
 		
 		sumReward = 0.0;
+		//System.out.println("init");
 		
-		agent = new QLearner(statesCount, actionsCount, alpha, gamma, 0);
 		
 		previousState = -1;
 		currentState = -1;
@@ -359,11 +359,11 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		rewards = new HashMap<String, Integer>();
 		rewards.put("hitByBullet", -10);
 		rewards.put("hitWall", -5);
-		rewards.put("hitRobot", -3);
+		rewards.put("hitRobot", 1);
 		rewards.put("bulletHit", 10);
 		rewards.put("death", -100);
 		rewards.put("kill", 75);
-		rewards.put("bulletMissed", -1);
+		rewards.put("bulletMissed", -5);
 		
 	}
 
@@ -375,7 +375,6 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		enemyEnergy = event.getEnergy();
 		
 		lastScan = event;
-		
 	}
 
 	public void onHitWall(HitWallEvent event) {
