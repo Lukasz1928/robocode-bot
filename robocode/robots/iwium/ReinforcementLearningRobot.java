@@ -42,8 +42,6 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	
 	private Mode mode;
 	
-	private Action nextAction;
-	
 	private Map<String, Integer> rewards;
 	
 	private enum Action {
@@ -69,7 +67,6 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		}
 	}
 	
-	private boolean scanned;
 	private double enemyEnergy;
 	private double enemyVelocity;
 	private double enemyBearing;
@@ -117,12 +114,12 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void think() {
-		if(learning) {
-			updateAgent();
-		}
 		previousState = currentState;
 		previousAction = currentAction;
 		currentState = getStateId();
+		if(learning) {
+			updateAgent();
+		}
 		int action;
 		if(Math.random() < epsilon) {
 			action = selectRandomAction();
@@ -134,6 +131,9 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void updateAgent() {
+		if(agent == null) {
+			System.out.println("dupa");
+		}
 		agent.update(previousState, previousAction.toInt(), currentState, sumReward);
 		sumReward = 0.0;
 	}
@@ -228,7 +228,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void act() {
-		if(nextAction.equals(Action.MOVE_UP)) {
+		if(currentAction.equals(Action.MOVE_UP)) {
 			double heading = getHeading();
 			if(heading >= 180) {
 				setTurnRight(360 - heading);
@@ -238,7 +238,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			}
 			setAhead(Action.moveDistance);
 		}
-		else if(nextAction.equals(Action.MOVE_DOWN)) {
+		else if(currentAction.equals(Action.MOVE_DOWN)) {
 			double heading = getHeading();
 			if(heading >= 180) {
 				setTurnLeft(180 - heading);
@@ -248,7 +248,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			}
 			setAhead(Action.moveDistance);
 		}
-		else if(nextAction.equals(Action.MOVE_LEFT)) {
+		else if(currentAction.equals(Action.MOVE_LEFT)) {
 			double heading = getHeading();
 			if(heading <= 90) {
 				setTurnLeft(90 + heading);
@@ -261,7 +261,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			}
 			setAhead(Action.moveDistance);
 		}
-		else if(nextAction.equals(Action.MOVE_RIGHT)) {
+		else if(currentAction.equals(Action.MOVE_RIGHT)) {
 			double heading = getHeading();
 			if(heading < 90) {
 				setTurnRight(90 - heading);
@@ -274,7 +274,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			}
 			setAhead(Action.moveDistance);
 		}
-		else if(nextAction.equals(Action.FIRE)) {
+		else if(currentAction.equals(Action.FIRE)) {
 			fire();
 		}
 	}
@@ -286,12 +286,19 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void initializeRobot() {
-		setColors(Color.red,Color.blue,Color.green);
+		setBodyColor(Color.red);
+		setGunColor(Color.black);
+		setRadarColor(Color.yellow);
+		setBulletColor(Color.green);
+		setScanColor(Color.green);
 
 		setAdjustGunForRobotTurn(true);
 		setAdjustRadarForGunTurn(true);
 		
 		mode = Mode.SENSE;
+		
+		currentAction = Action.FIRE;
+		currentState = 0;
 		
 	}
 	
@@ -301,9 +308,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		
 		sumReward = 0.0;
 		
-		agent = new QLearner();
-		agent.getModel().setAlpha(this.alpha);
-		agent.getModel().setGamma(this.gamma);
+		agent = new QLearner(statesCount, actionsCount, alpha, gamma, 0);
 		
 		previousState = -1;
 		currentState = -1;
