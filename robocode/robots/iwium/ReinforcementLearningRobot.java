@@ -7,6 +7,8 @@ import java.lang.Math;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Random;
+import robocode.util.*;
+import java.awt.geom.*;
 
 import static robocode.util.Utils.normalRelativeAngle;
 
@@ -27,7 +29,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	private boolean learning = true;
 	private int statesCount = 3 * 3 * 3 * 8 * 2 * 9;
 	private int stateComponents = 6;
-	private int actionsCount = 5;
+	private int actionsCount = 6;
 	
 	private int previousState;
 	private int currentState;
@@ -45,9 +47,9 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	private Map<String, Integer> rewards;
 	
 	private enum Action {
-		MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE;
+		MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE_SIMPLE, FIRE_CIRCULAR;
 		
-		public static double moveDistance = 10;
+		public static double moveDistance = 30;
 		public static int fireStrength = 2;
 		
 		public static Action fromInt(int a) {
@@ -55,7 +57,8 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			if(a == 1) return MOVE_DOWN;
 			if(a == 2) return MOVE_LEFT;
 			if(a == 3) return MOVE_RIGHT;
-			return FIRE;
+			if(a == 4) return FIRE_SIMPLE;
+			return FIRE_CIRCULAR;
 		}
 		
 		public int toInt() {
@@ -63,7 +66,8 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			if(this.equals(MOVE_DOWN)) return 1;
 			if(this.equals(MOVE_LEFT)) return 2;
 			if(this.equals(MOVE_RIGHT)) return 3;
-			return 4;
+			if(this.equals(FIRE_SIMPLE)) return 4;
+			return 5;
 		}
 	}
 	
@@ -72,6 +76,10 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	private double enemyBearing;
 	private double enemyHeading;
 	private double enemyDistance;
+	
+	private ScannedRobotEvent lastScan;
+	
+	private double oldEnemyHeading;
 	
 	private enum Mode {
 		SENSE, THINK, ACT;
@@ -131,9 +139,6 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void updateAgent() {
-		if(agent == null) {
-			System.out.println("dupa");
-		}
 		agent.update(previousState, previousAction.toInt(), currentState, sumReward);
 		sumReward = 0.0;
 	}
@@ -224,7 +229,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private int selectRandomAction() {
-		return new Random().nextInt(this.actionsCount);
+		return new Random().nextInt(actionsCount);
 	}
 	
 	private void act() {
@@ -274,15 +279,53 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			}
 			setAhead(Action.moveDistance);
 		}
-		else if(currentAction.equals(Action.FIRE)) {
-			fire();
+		else if(currentAction.equals(Action.FIRE_SIMPLE)) {
+			fireLinear();
+		}
+		else if(currentAction.equals(Action.FIRE_CIRCULAR)) {
+			fireCircular();
 		}
 	}
 	
-	private void fire() {
+	private void fireLinear() {
 		double turn = normalRelativeAngle(enemyBearing + getHeadingRadians() - getGunHeadingRadians());
 		setTurnGunRightRadians(turn);
 		setFire(Action.fireStrength);
+	}
+	
+	private void fireCircular() {
+		if(lastScan == null) {
+			fireLinear();
+			return;
+		}
+		double _bulletPower = Action.fireStrength;
+		double _myX = getX();
+		double _myY = getY();
+		double _absoluteBearing = getHeadingRadians() + lastScan.getBearingRadians();
+		double _enemyX = getX() + lastScan.getDistance() * Math.sin(_absoluteBearing);
+		double _enemyY = getY() + lastScan.getDistance() * Math.cos(_absoluteBearing);
+		double _enemyHeading = lastScan.getHeadingRadians();
+		double _enemyHeadingChange = enemyHeading - oldEnemyHeading;
+		double _enemyVelocity = lastScan.getVelocity();
+		oldEnemyHeading = enemyHeading;
+
+		double deltaTime = 0;
+		double battleFieldHeight = getBattleFieldHeight(), battleFieldWidth = getBattleFieldWidth();
+		double predictedX = _enemyX, predictedY = _enemyY;
+		while((++deltaTime) * (20.0 - 3.0 * _bulletPower) < Point2D.Double.distance(_myX, _myY, predictedX, predictedY)){		
+			predictedX += Math.sin(_enemyHeading) * _enemyVelocity;
+			predictedY += Math.cos(_enemyHeading) * _enemyVelocity;
+			_enemyHeading += _enemyHeadingChange;
+			if(predictedX < 18.0 || predictedY < 18.0 || predictedX > battleFieldWidth - 18.0 || predictedY > battleFieldHeight - 18.0) {
+				predictedX = Math.min(Math.max(18.0, predictedX), battleFieldWidth - 18.0);	
+				predictedY = Math.min(Math.max(18.0, predictedY), battleFieldHeight - 18.0);
+				break;
+			}
+		}
+		double theta = Utils.normalAbsoluteAngle(Math.atan2(predictedX - getX(), predictedY - getY()));
+		setTurnRadarRightRadians(Utils.normalRelativeAngle(_absoluteBearing - getRadarHeadingRadians()));
+		setTurnGunRightRadians(Utils.normalRelativeAngle(theta - getGunHeadingRadians()));
+		fire(Action.fireStrength);
 	}
 	
 	private void initializeRobot() {
@@ -297,9 +340,9 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		
 		mode = Mode.SENSE;
 		
-		currentAction = Action.FIRE;
+		currentAction = Action.FIRE_SIMPLE;
 		currentState = 0;
-		
+		oldEnemyHeading = 0;
 	}
 	
 	private void initializeAgent() {
@@ -320,6 +363,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		rewards.put("bulletHit", 10);
 		rewards.put("death", -100);
 		rewards.put("kill", 75);
+		rewards.put("bulletMissed", -1);
 		
 	}
 
@@ -329,6 +373,8 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		enemyHeading = event.getHeadingRadians();
 		enemyVelocity = event.getVelocity();
 		enemyEnergy = event.getEnergy();
+		
+		lastScan = event;
 		
 	}
 
@@ -355,6 +401,10 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	
 	public void onRobotDeath(RobotDeathEvent event) {
 		sumReward += rewards.get("kill");
+	}
+	
+	public void onBulletMissed(BulletMissedEvent event) {
+		sumReward += rewards.get("bulletMissed");
 	}
 	
 	public void onRoundEnded(RoundEndedEvent event) {
