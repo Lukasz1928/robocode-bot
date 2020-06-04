@@ -25,7 +25,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	private static double epsilon = 0.10;
 	
 	private static boolean learning = true;
-	private static int statesCount = 3 * 3 * 3 * 8 * 2 * 9;
+	private static int statesCount = 3 * 3 * 3 * 4 * 2 * 9;
 	private static int stateComponents = 6;
 	private static int actionsCount = 6;
 	
@@ -109,7 +109,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			if(mode.equals(Mode.ACT)) {
 				act();
 			}
-			execute();
+			//execute();
 			mode = mode.next();
 		}
 	}
@@ -136,6 +136,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			action = agent.selectAction(currentState).getIndex();
 		}
 		currentAction = Action.fromInt(action);
+		lastScan = null;
 	}
 	
 	private void updateAgent() {
@@ -148,8 +149,8 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			   3 * getEnemyEnergyId() +
 			   3 * 3 * getEnemyDistanceId() +
 			   3 * 3 * 3 * getEnemyAngleId() +
-			   3 * 3 * 3 * 8 * getEnemyMovementId() +
-			   3 * 3 * 3 * 8 * 2 * getLocationId();
+			   3 * 3 * 3 * 4 * getEnemyMovementId() +
+			   3 * 3 * 3 * 4 * 2 * getLocationId();
 	}
 	
 	private int getEnergyId() {
@@ -185,8 +186,8 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	
 	private int getEnemyAngleId() {
 		int id = 0;
-		double angle = 45;
-		for(double langle = -22.5; langle < 337.5; langle += angle) {
+		double angle = 90;
+		for(double langle = -45; langle < 315; langle += angle) {
 			if(enemyBearing > langle && enemyBearing <= langle + angle) {
 				return id;
 			}
@@ -211,7 +212,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		if(x < arenaWidth / 4.0) {
 			return 0;
 		}
-		if(x < 3.0 * arenaWidth / 4.0) {
+		if(x > 3.0 * arenaWidth / 4.0) {
 			return 2;
 		}
 		return 1;
@@ -219,10 +220,10 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	
 	private int getLocationYId() {
 		double y = getY();
-		if(y < arenaWidth / 4.0) {
+		if(y < arenaHeight / 4.0) {
 			return 0;
 		}
-		if(y < 3.0 * arenaWidth / 4.0) {
+		if(y > 3.0 * arenaHeight / 4.0) {
 			return 2;
 		}
 		return 1;
@@ -242,6 +243,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 				setTurnLeft(heading);
 			}
 			setAhead(Action.moveDistance);
+			execute();
 		}
 		else if(currentAction.equals(Action.MOVE_DOWN)) {
 			double heading = getHeading();
@@ -252,6 +254,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 				setTurnRight(heading - 180);
 			}
 			setAhead(Action.moveDistance);
+			execute();
 		}
 		else if(currentAction.equals(Action.MOVE_LEFT)) {
 			double heading = getHeading();
@@ -265,6 +268,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 				setTurnLeft(heading - 270);
 			}
 			setAhead(Action.moveDistance);
+			execute();
 		}
 		else if(currentAction.equals(Action.MOVE_RIGHT)) {
 			double heading = getHeading();
@@ -278,6 +282,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 				setTurnRight(450 - heading);
 			}
 			setAhead(Action.moveDistance);
+			execute();
 		}
 		else if(currentAction.equals(Action.FIRE_SIMPLE)) {
 			fireLinear();
@@ -291,6 +296,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		double turn = normalRelativeAngle(enemyBearing + getHeadingRadians() - getGunHeadingRadians());
 		setTurnGunRightRadians(turn);
 		setFire(Action.fireStrength);
+		execute();
 	}
 	
 	private void fireCircular() {
@@ -350,8 +356,6 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		arenaHeight = getBattleFieldHeight();
 		
 		sumReward = 0.0;
-		//System.out.println("init");
-		
 		
 		previousState = -1;
 		currentState = -1;
@@ -395,7 +399,9 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	
 	public void onDeath(DeathEvent event) {
 		sumReward += rewards.get("death");
-		updateAgent();
+		if(learning) {
+			updateAgent();
+		}
 	}
 	
 	public void onRobotDeath(RobotDeathEvent event) {
