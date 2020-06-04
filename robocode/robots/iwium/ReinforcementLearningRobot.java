@@ -10,6 +10,10 @@ import java.util.Random;
 import robocode.util.*;
 import java.awt.geom.*;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
 import static robocode.util.Utils.normalRelativeAngle;
 
 
@@ -19,8 +23,28 @@ import static robocode.util.Utils.normalRelativeAngle;
 //https://github.com/DulingLai/Robocode_MLProject/blob/master/src/bots/RL_robot.java
 
 public class ReinforcementLearningRobot extends AdvancedRobot {
+
+	private static RobocodeFileOutputStream f;
 	
-	private static double gamma = 0.99;
+	static {
+		try {
+			f = new RobocodeFileOutputStream("D:/Desktop/IWiUM/robocode-bot/robocode/robots/iwium/ReinforcementLearningRobot.data/logs.txt");
+		}
+		catch(IOException e) {
+		
+		}
+	}
+
+	private static void log(String msg) {
+		try {
+			f.write(msg.getBytes());
+		}
+		catch(IOException e) {
+		
+		}
+	}
+	
+	private static double gamma = 0.90;
 	private static double alpha = 0.90;
 	private static double epsilon = 0.25;
 	
@@ -109,7 +133,6 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 			if(mode.equals(Mode.ACT)) {
 				act();
 			}
-			//execute();
 			mode = mode.next();
 		}
 	}
@@ -408,6 +431,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		if(learning) {
 			updateAgent();
 		}
+		log("0");
 	}
 	
 	public void onRobotDeath(RobotDeathEvent event) {
@@ -422,6 +446,10 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		double lr = Math.max(0.01, Math.min(1.0, 1.0 - Math.log10(event.getRound() / 1000.0)));
 		agent.getModel().setAlpha(lr);
 		epsilon = lr;
+	}
+	
+	public void onWin(WinEvent event) {
+		log("1");
 	}
 	
 	public void onBattleEnded(BattleEndedEvent event) {
