@@ -20,16 +20,16 @@ import static robocode.util.Utils.normalRelativeAngle;
 
 public class ReinforcementLearningRobot extends AdvancedRobot {
 	
-	private static double gamma = 0.95;
-	private static double alpha = 0.80;
-	private static double epsilon = 0.10;
+	private static double gamma = 0.99;
+	private static double alpha = 0.90;
+	private static double epsilon = 0.25;
 	
 	private static boolean learning = true;
 	private static int statesCount = 3 * 3 * 3 * 4 * 2 * 9;
 	private static int stateComponents = 6;
 	private static int actionsCount = 6;
 	
-	private static final QLearner agent = new QLearner(statesCount, actionsCount, alpha, gamma, 0.5);
+	private static final QLearner agent = new QLearner(statesCount + 1, actionsCount, alpha, gamma, 0.0);
 	
 	private int previousState;
 	private int currentState;
@@ -140,11 +140,17 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void updateAgent() {
-		agent.update(previousState, previousAction.toInt(), currentState, sumReward);
-		sumReward = 0.0;
+		if(sumReward != 0) {
+			agent.update(previousState, previousAction.toInt(), currentState, sumReward);
+			System.out.println("update: " + String.valueOf(sumReward));
+			sumReward = 0.0;
+		}
 	}
 	
 	private int getStateId() {
+		if(lastScan != null) {
+			return statesCount;
+		}
 		return 1 * getEnergyId() +
 			   3 * getEnemyEnergyId() +
 			   3 * 3 * getEnemyDistanceId() +
@@ -248,10 +254,10 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		else if(currentAction.equals(Action.MOVE_DOWN)) {
 			double heading = getHeading();
 			if(heading >= 180) {
-				setTurnLeft(180 - heading);
+				setTurnLeft(heading - 180);
 			}
 			else {
-				setTurnRight(heading - 180);
+				setTurnRight(180 - heading);
 			}
 			setAhead(Action.moveDistance);
 			execute();
@@ -367,7 +373,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 		rewards.put("bulletHit", 10);
 		rewards.put("death", -100);
 		rewards.put("kill", 75);
-		rewards.put("bulletMissed", -5);
+		rewards.put("bulletMissed", -10);
 		
 	}
 
@@ -413,7 +419,9 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	public void onRoundEnded(RoundEndedEvent event) {
-		
+		double lr = Math.max(0.01, Math.min(1.0, 1.0 - Math.log10(event.getRound() / 1000.0)));
+		agent.getModel().setAlpha(lr);
+		epsilon = lr;
 	}
 	
 	public void onBattleEnded(BattleEndedEvent event) {
