@@ -3,3 +3,4 @@ robocode/*
 robocode/robots/*
 !robocode/robots/iwium
 robocode/robots/iwium/*.class
+**/*.data/*
