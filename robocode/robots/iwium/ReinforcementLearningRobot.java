@@ -17,11 +17,6 @@ import java.io.IOException;
 import static robocode.util.Utils.normalRelativeAngle;
 
 
-//SOURCES: 
-//https://github.com/krris/QLearning-Robocode/blob/master/src/main/java/io/github/krris/qlearning/LearningRobot.java
-//https://github.com/stevenpjg/QlearningRobocodeNN/blob/master/LookUpTable/Rl_check.java
-//https://github.com/DulingLai/Robocode_MLProject/blob/master/src/bots/RL_robot.java
-
 public class ReinforcementLearningRobot extends AdvancedRobot {
 
 	private static RobocodeFileOutputStream f;
@@ -73,7 +68,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	private enum Action {
 		MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE_SIMPLE, FIRE_CIRCULAR;
 		
-		public static double moveDistance = 30;
+		public static double moveDistance = 50;
 		public static int fireStrength = 2;
 		
 		public static Action fromInt(int a) {
@@ -163,22 +158,16 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private void updateAgent() {
-		if(sumReward != 0) {
-			agent.update(previousState, previousAction.toInt(), currentState, sumReward);
-			System.out.println("update: " + String.valueOf(sumReward));
-			sumReward = 0.0;
-		}
+		agent.update(previousState, previousAction.toInt(), currentState, sumReward);
+		sumReward = 0.0;
 	}
 	
 	private int getStateId() {
-		if(lastScan != null) {
-			return statesCount;
-		}
 		return 1 * getEnergyId() +
 			   3 * getEnemyEnergyId() +
 			   3 * 3 * getEnemyDistanceId() +
 			   3 * 3 * 3 * getEnemyAngleId() +
-			   3 * 3 * 3 * 4 * getEnemyMovementId() +
+			   3 * 3 * 3 * 5 * getEnemyMovementId() +
 			   3 * 3 * 3 * 4 * 2 * getLocationId();
 	}
 	
@@ -204,10 +193,10 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private int getEnemyDistanceId() {
-		if(enemyDistance <= 20) {
+		if(enemyDistance <= 50) {
 			return 0;
 		}
-		if(enemyDistance <= 100) {
+		if(enemyDistance <= 250) {
 			return 1;
 		}
 		return 2;
@@ -226,6 +215,9 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	private int getEnemyMovementId() {
+		if(lastScan == null) {
+			return 4;
+		}
 		if(enemyVelocity < 1) {
 			return 0;
 		}
@@ -443,7 +435,7 @@ public class ReinforcementLearningRobot extends AdvancedRobot {
 	}
 	
 	public void onRoundEnded(RoundEndedEvent event) {
-		double lr = Math.max(0.01, Math.min(1.0, 1.0 - Math.log10(event.getRound() / 1000.0)));
+		double lr = Math.max(0.05, Math.min(1.0, 1.0 - Math.log10(event.getRound() / 1000.0)));
 		agent.getModel().setAlpha(lr);
 		epsilon = lr;
 	}
